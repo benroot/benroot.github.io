@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>benroot · Pages</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f7f6f3;
+      --surface:  #ffffff;
+      --border:   #e4e2db;
+      --text:     #1a1917;
+      --muted:    #8a8780;
+      --accent:   #2a6fdb;
+      --accent-hover: #1a55b5;
+      --radius:   6px;
+      --mono:     'DM Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      min-height: 100vh;
+      padding: 0 1.5rem 4rem;
+    }
+
+    /* ── Header ── */
+    header {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3.5rem 0 2.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-family: var(--mono);
+      font-weight: 400;
+      font-size: 1.25rem;
+      letter-spacing: -0.01em;
+    }
+
+    header h1 span {
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    header p.subtitle {
+      font-size: 0.8rem;
+      font-family: var(--mono);
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    /* ── Status bar ── */
+    #status {
+      max-width: 720px;
+      margin: 2rem auto 0;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      min-height: 1.2em;
+      transition: opacity 0.3s;
+    }
+
+    #status.hidden { opacity: 0; }
+
+    /* ── Grid ── */
+    #grid {
+      max-width: 720px;
+      margin: 1.25rem auto 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      padding: 1.4rem 1.5rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      opacity: 0;
+      transform: translateY(6px);
+      animation: fadein 0.35s ease forwards;
+      transition: background 0.15s;
+    }
+
+    .card:hover { background: #fafaf8; }
+
+    @keyframes fadein {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-name {
+      font-family: var(--mono);
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .card-name a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .card-name a:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.55;
+      flex: 1;
+    }
+
+    .card-desc.empty { color: var(--muted); font-style: italic; }
+
+    .card-meta {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    /* ── Empty / error states ── */
+    #message {
+      max-width: 720px;
+      margin: 3rem auto 0;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: none;
+    }
+
+    /* ── Footer ── */
+    footer {
+      max-width: 720px;
+      margin: 3rem auto 0;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    footer a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span>github.com/</span>benroot</h1>
+  <p class="subtitle" id="count"></p>
+</header>
+
+<p id="status">fetching repositories…</p>
+<div id="grid"></div>
+<p id="message"></p>
+
+<footer>
+  <span>auto-detected via GitHub API</span>
+  <a href="https://github.com/benroot" target="_blank" rel="noopener">github.com/benroot ↗</a>
+</footer>
+
+<script>
+  const USERNAME = 'benroot';
+  const API = 'https://api.github.com';
+
+  const grid    = document.getElementById('grid');
+  const status  = document.getElementById('status');
+  const message = document.getElementById('message');
+  const count   = document.getElementById('count');
+
+  function setStatus(text) { status.textContent = text; }
+  function hideStatus()    { status.classList.add('hidden'); }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function addCard(repo, pagesUrl, delay) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.animationDelay = `${delay}ms`;
+
+    const desc = repo.description
+      ? `<p class="card-desc">${repo.description}</p>`
+      : `<p class="card-desc empty">no description</p>`;
+
+    card.innerHTML = `
+      <div class="card-name"><a href="${pagesUrl}" target="_blank" rel="noopener">${repo.name}</a></div>
+      ${desc}
+      <div class="card-meta">updated ${formatDate(repo.updated_at)}</div>
+    `;
+    grid.appendChild(card);
+  }
+
+  async function fetchAllRepos() {
+    const repos = [];
+    let page = 1;
+    while (true) {
+      const res = await fetch(`${API}/users/${USERNAME}/repos?per_page=100&page=${page}&sort=updated`);
+      if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+      const batch = await res.json();
+      if (!batch.length) break;
+      repos.push(...batch);
+      if (batch.length < 100) break;
+      page++;
+    }
+    return repos;
+  }
+
+  async function checkPages(repo) {
+    // Primary signal: has_pages flag on the repo object
+    if (!repo.has_pages) return null;
+
+    // Derive the Pages URL
+    // Special case: <username>.github.io repo → root domain
+    if (repo.name.toLowerCase() === `${USERNAME.toLowerCase()}.github.io`) {
+      return `https://${USERNAME}.github.io/`;
+    }
+    return `https://${USERNAME}.github.io/${repo.name}/`;
+  }
+
+  async function main() {
+    try {
+      setStatus('fetching repositories…');
+      const repos = await fetchAllRepos();
+
+      setStatus(`checking ${repos.length} repos for GitHub Pages…`);
+
+      const results = [];
+      for (const repo of repos) {
+        const url = await checkPages(repo);
+        if (url) results.push({ repo, url });
+      }
+
+      hideStatus();
+
+      if (!results.length) {
+        message.style.display = 'block';
+        message.textContent = 'no GitHub Pages sites found.';
+        return;
+      }
+
+      count.textContent = `${results.length} site${results.length !== 1 ? 's' : ''}`;
+
+      results.forEach(({ repo, url }, i) => {
+        addCard(repo, url, i * 45);
+      });
+
+    } catch (err) {
+      setStatus('');
+      message.style.display = 'block';
+      message.textContent = `error: ${err.message}`;
+      console.error(err);
+    }
+  }
+
+  main();
+</script>
+</body>
+</html>
